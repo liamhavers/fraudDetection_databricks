@@ -105,7 +105,7 @@ pytest -q
 - [x] Step 5: `fraud/splits.py` + tests, `04_train`: XGBoost, MLflow, register `@champion`  **(enough to apply)**
 - [x] Step 6: `fraud/drift.py` + tests, `05_score`, `06_drift`
 - [x] Step 7: Databricks Job chaining all six notebooks; screenshot DAG and run
-- [ ] Step 8: README, CI workflow, cross-link with `fraud-detection-system`
+- [x] Step 8: README, CI workflow, cross-link with `fraud-detection-system`
 
 Stretch (only after Step 8): customer ID key (card1 + addr1 + event_day - D1), frequency maps from the training window only, selected V columns, SparkXGBClassifier, Databricks Asset Bundle.
 
