@@ -26,15 +26,17 @@ def with_week(df: DataFrame, day_col: str = "event_day") -> DataFrame:
     return df.withColumn("week", F.floor(F.col(day_col) / 7).cast("int"))
 
 
-def quantile_edges(df: DataFrame, col: str, n_buckets: int = 10) -> list[float]:
-    """Inner bucket edges at the exact 1/n, 2/n, ... quantiles of col, ignoring nulls.
+def quantile_edges(df: DataFrame, cols: list[str], n_buckets: int = 10) -> dict[str, list[float]]:
+    """Inner bucket edges per column, at the exact 1/n, 2/n, ... quantiles, ignoring nulls.
+
+    All columns are computed in one pass over df: one Spark job instead of one per column.
 
     Repeated edges are dropped, so a column with heavy ties (a count that is mostly 0, say)
     gets fewer buckets rather than empty ones.
     """
     probs = [i / n_buckets for i in range(1, n_buckets)]
-    edges = df.approxQuantile(col, probs, 0.0)
-    return sorted(set(edges))
+    edges = df.approxQuantile(cols, probs, 0.0)
+    return {c: sorted(set(e)) for c, e in zip(cols, edges)}
 
 
 def bucket(col: str, edges: list[float]) -> Column:

@@ -26,7 +26,13 @@ def test_quantile_edges_drops_repeated_edges(spark):
     df = spark.createDataFrame([(v,) for v in [0.0] * 8 + [1.0, 2.0]], "x double")
 
     # Deciles 10% to 80% are all 0 and 90% is the 9th value, 1: nine edges collapse to two.
-    assert quantile_edges(df, "x", n_buckets=10) == [0.0, 1.0]
+    assert quantile_edges(df, ["x"], n_buckets=10) == {"x": [0.0, 1.0]}
+
+
+def test_quantile_edges_several_columns(spark):
+    df = spark.createDataFrame([(float(i), float(10 * i)) for i in range(1, 5)], "a double, b double")
+
+    assert quantile_edges(df, ["a", "b"], n_buckets=2) == {"a": [2.0], "b": [20.0]}
 
 
 def test_same_distribution_gives_zero(spark):

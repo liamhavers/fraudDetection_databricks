@@ -75,8 +75,9 @@ gold = with_week(spark.table(f"{CATALOG_SCHEMA}.gold_features")).select(
 gold_ref = gold.join(train_ids, "TransactionID", "left_semi")
 score_ref = scores.where(F.col("split") == "train")
 
-score_edges = {"fraud_probability": quantile_edges(score_ref, "fraud_probability")}
-feature_edges = {c: quantile_edges(gold_ref, c) for c in top_features}
+# One pass per reference table for all its columns, rather than one pass per column.
+score_edges = quantile_edges(score_ref, ["fraud_probability"])
+feature_edges = quantile_edges(gold_ref, top_features)
 
 psi = weekly_psi(scores, score_ref, score_edges).unionByName(
     weekly_psi(gold, gold_ref, feature_edges)
