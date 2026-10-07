@@ -9,6 +9,19 @@ from pyspark.sql import functions as F
 
 VELOCITY_WINDOWS = {"1h": 3_600, "24h": 86_400, "7d": 604_800}
 
+# Columns to frequency-encode: every string column in silver, plus integer columns that are
+# category codes rather than quantities.
+CAT_COLS = [
+    "ProductCD",
+    "card1", "card2", "card3", "card4", "card5", "card6",
+    "addr1", "addr2",
+    "P_emaildomain", "R_emaildomain",
+    "M1", "M2", "M3", "M4", "M5", "M6", "M7", "M8", "M9",
+    "id_12", "id_15", "id_16", "id_23", "id_27", "id_28", "id_29", "id_30", "id_31",
+    "id_33", "id_34", "id_35", "id_36", "id_37", "id_38",
+    "DeviceType", "DeviceInfo",
+]
+
 
 def _null_guard(key: str, value: Column) -> Column:
     """Return value only where the key is present.
@@ -54,3 +67,24 @@ def add_velocity_features(
         f"{prefix}_secs_since_last",
         _null_guard(key, F.col(ts_col) - F.max(ts_col).over(all_earlier)),
     )
+
+
+def add_frequency_features(df: DataFrame, cols: list[str] = CAT_COLS) -> DataFrame:
+    """Add {col}_freq: how many rows in df share this row's value of col.
+
+    Counts come from the whole of df, so if df spans the test period they use future rows
+    (no labels). Rows where col is null get a null count.
+
+    Each count table has one row per distinct value, so it is broadcast to the join rather
+    than shuffling df.
+    """
+    out = df
+    for c in cols:
+        counts = (
+            df.where(F.col(c).isNotNull())
+            .groupBy(c)
+            .agg(F.count(F.lit(1)).alias(f"{c}_freq"))
+        )
+        out = out.join(F.broadcast(counts), on=c, how="left")
+
+    return out.select(*df.columns, *[f"{c}_freq" for c in cols])
