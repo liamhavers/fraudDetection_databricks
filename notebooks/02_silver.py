@@ -57,10 +57,11 @@ print(f"identity: {len(idn.columns)} bronze columns -> {len(idn_cols)} kept")
 # MAGIC - **Broadcast hash join**: send a full copy of the small side to every executor, so the large
 # MAGIC   side is never shuffled.
 # MAGIC
-# MAGIC No `F.broadcast()` hint here. Identity is around 27 MB as CSV, which is above the default 10 MB
-# MAGIC static broadcast threshold, but Adaptive Query Execution (AQE) measures the real size after
-# MAGIC the scan and can switch to a broadcast join at runtime. The `explain()` cell below shows which
-# MAGIC plan Spark chose.
+# MAGIC No `F.broadcast()` hint is needed. Identity is 27 MB as CSV, but as a Delta table it is
+# MAGIC compressed Parquet with full table statistics, so the optimizer knows its real size and picks
+# MAGIC a broadcast hash join in the initial plan. If the statistics were missing, Adaptive Query
+# MAGIC Execution (AQE) could still switch to a broadcast join at runtime once the scan had measured
+# MAGIC the real size. The `explain()` cell below shows the plan Spark chose.
 
 # COMMAND ----------
 
@@ -116,10 +117,19 @@ silver = (
 # MAGIC %md
 # MAGIC ## Query plan
 # MAGIC
-# MAGIC Look for the join operator: `BroadcastHashJoin` or `SortMergeJoin`, and any `Exchange`
-# MAGIC (a shuffle). With AQE on, the plan starts as `AdaptiveSparkPlan isFinalPlan=false`, so this
-# MAGIC shows the initial plan. The final plan, after AQE has seen the real sizes, is in the
-# MAGIC query profile for the write in the next cell.
+# MAGIC What the plan shows (operators are prefixed `Photon`, Databricks' vectorised engine):
+# MAGIC
+# MAGIC - `PhotonBroadcastHashJoin LeftOuter`: identity is broadcast, transactions are joined in place.
+# MAGIC - The only exchange is on the identity side, with `SinglePartition` and `EXECUTOR_BROADCAST`.
+# MAGIC   That is how Photon builds the broadcast copy, not a hash-partitioned shuffle. The
+# MAGIC   transaction side has no exchange at all, which is the point of a broadcast join.
+# MAGIC - The transaction scan reads 55 columns, not 394. Parquet is columnar, so the dropped V
+# MAGIC   columns are never read from storage (column pruning).
+# MAGIC - `RequiredDataFilters: [isnotnull(TransactionID)]` on identity: a null key can never match
+# MAGIC   in an equi-join, so the optimizer filters it out before the join.
+# MAGIC
+# MAGIC With AQE on, this is the initial plan (`isFinalPlan=false`). The final plan is in the query
+# MAGIC profile for the write in the next cell.
 
 # COMMAND ----------
 
