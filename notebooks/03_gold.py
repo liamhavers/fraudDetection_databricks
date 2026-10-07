@@ -16,6 +16,8 @@
 
 # COMMAND ----------
 
+import contextlib
+import io
 import os
 import sys
 
@@ -69,10 +71,30 @@ display(
 # MAGIC - For each frequency column: a small `Exchange` for the `groupBy` (after a partial aggregate,
 # MAGIC   so only one row per distinct value per partition is shuffled), then a broadcast exchange
 # MAGIC   and a `BroadcastHashJoin`. The large side is not shuffled for these joins.
+# MAGIC
+# MAGIC Expected counts: 1 window, 1 sort, 2 `card1` shuffles (the window shuffle plus the small
+# MAGIC `card1` count), 37 broadcast joins, 0 sort-merge joins.
 
 # COMMAND ----------
 
-gold.explain(mode="formatted")
+# The full plan is over 400 operators and too long to read in a cell, so count the
+# operators that matter. Each pattern matches both Photon (PhotonWindow) and Spark (Window)
+# names.
+PLAN_PATTERNS = {
+    "window operators": "Window [",
+    "sorts": "Sort [",
+    "card1 shuffles": "hashpartitioning(card1",
+    "broadcast joins": "BroadcastHashJoin",
+    "sort-merge joins": "SortMergeJoin",
+}
+
+plan_buf = io.StringIO()
+with contextlib.redirect_stdout(plan_buf):
+    gold.explain()
+plan = plan_buf.getvalue()
+
+for label, pattern in PLAN_PATTERNS.items():
+    print(f"{label:<18}{plan.count(pattern)}")
 
 # COMMAND ----------
 
