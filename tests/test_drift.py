@@ -2,7 +2,7 @@ import math
 
 import pytest
 
-from fraud.drift import NULL_BUCKET, bucket, quantile_edges, weekly_psi
+from fraud.drift import NULL_BUCKET, bucket, quantile_edges, weekly_psi, with_week
 
 
 def psi_by_week(spark, ref_values, weeks):
@@ -57,3 +57,9 @@ def test_new_nulls_count_as_drift(spark):
 
     assert out[1].psi == pytest.approx(0.0)
     assert out[2].psi > 1.0
+
+
+def test_with_week(spark):
+    df = spark.createDataFrame([(d,) for d in [0, 6, 7, 13, 14]], "event_day int")
+
+    assert [r.week for r in with_week(df).collect()] == [0, 0, 1, 1, 2]

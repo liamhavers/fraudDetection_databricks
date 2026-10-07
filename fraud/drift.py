@@ -21,6 +21,11 @@ NULL_BUCKET = -1
 EPSILON = 1e-4
 
 
+def with_week(df: DataFrame, day_col: str = "event_day") -> DataFrame:
+    """Add `week`: whole weeks since the reference date, from the integer event_day."""
+    return df.withColumn("week", F.floor(F.col(day_col) / 7).cast("int"))
+
+
 def quantile_edges(df: DataFrame, col: str, n_buckets: int = 10) -> list[float]:
     """Inner bucket edges at the exact 1/n, 2/n, ... quantiles of col, ignoring nulls.
 
