@@ -1,2 +1,6 @@
 # Data download
 kaggle>=1.6
+
+# Local Spark and tests
+pyspark>=4.0
+pytest>=8.2

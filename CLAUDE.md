@@ -100,7 +100,7 @@ pytest -q
 - [x] Step 0: Download IEEE-CIS train files locally, gitignore `data/`
 - [x] Step 1: Free Edition workspace, schema + volume, upload CSVs, link Git folder
 - [x] Step 2: `01_bronze`: CSVs to Delta with `_ingested_at`, `_source_file`; check 590,540 / 144,233 rows
-- [ ] Step 3: `02_silver`: column subset (no V columns yet), left join identity, `event_ts` (ref epoch 1512086400 = 2017-12-01 UTC, assumed), `event_day`, clean email domains
+- [x] Step 3: `02_silver`: column subset (no V columns yet), left join identity, `event_ts` (ref epoch 1512086400 = 2017-12-01 UTC, assumed), `event_day`, clean email domains
 - [ ] Step 4: `fraud/features.py` + tests, `03_gold`; review `explain()` for Exchange operators
 - [ ] Step 5: `fraud/splits.py` + tests, `04_train`: XGBoost, MLflow, register `@champion`  **(enough to apply)**
 - [ ] Step 6: `fraud/drift.py` + tests, `05_score`, `06_drift`
