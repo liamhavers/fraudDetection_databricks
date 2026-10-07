@@ -29,6 +29,7 @@ import sys
 sys.path.append(os.path.abspath(".."))
 
 import mlflow
+import pandas as pd
 from mlflow.tracking import MlflowClient
 from pyspark.sql import functions as F
 
@@ -46,7 +47,10 @@ REF_DATE = "2017-12-01"
 client = MlflowClient(registry_uri="databricks-uc")
 champion = client.get_model_version_by_alias(MODEL_NAME, "champion")
 
-importance = mlflow.load_table("feature_importance.json", run_ids=[champion.run_id])
+# Read the importance file logged by 04_train directly. mlflow.load_table finds tables through
+# a run tag that is not always set on serverless, so it can miss an artifact that exists.
+logged = mlflow.artifacts.load_dict(f"runs:/{champion.run_id}/feature_importance.json")
+importance = pd.DataFrame(logged["data"], columns=logged["columns"])
 top_features = importance.sort_values("gain", ascending=False)["feature"].head(TOP_N_FEATURES).tolist()
 print(f"champion version {champion.version}; monitoring score and {top_features}")
 
